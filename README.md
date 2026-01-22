@@ -22,3 +22,5 @@ Como usar
 
 -     Windows 10/11
 -     Chave de API da OpenAI com acesso ao GPT-4 Vision
+
+'sk-proj-6Rhesk_mL1qqpiqglMTa5MIeDTZEh3BMBudLhDOIHgXg4SjmLri2Uo_hQQpLv7pqSalbTtiV26T3BlbkFJqF1aF1RP3-vBU0NgODUPE5nMNu78r0PGhpEvD7HI__ZM-AUMQ80hT7eSnc9MNglAzMaU33Euw'
