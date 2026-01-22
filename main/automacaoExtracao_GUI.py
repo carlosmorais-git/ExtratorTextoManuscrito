@@ -318,8 +318,10 @@ class ExtratorTextoApp:
             imagens = [f for f in os.listdir(pasta) 
                       if os.path.splitext(f)[1].lower() in extensoes]
             texto = f"✅ {len(imagens)} imagens encontradas em: {pasta}"
+
             if hasattr(self, 'pasta_info'):
                 self.pasta_info.config(text=texto, foreground="green")
+
             if hasattr(self, 'pasta_info_home'):
                 self.pasta_info_home.config(text=texto, foreground="green")
         else:
@@ -332,16 +334,11 @@ class ExtratorTextoApp:
         """Exporta os resultados para JSON"""
         if not self.resultados:
             messagebox.showwarning("Aviso", "Nenhum resultado para exportar!")
-            return
-            
-        arquivo = filedialog.asksaveasfilename(
-            defaultextension=".json",
-            filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
-            title="Salvar como JSON"
-        )
-        
-        if arquivo:
-            try:
+            return            
+       
+        arquivo = os.path.join(self.pasta_selecionada.get(), "resultados_extracao.json")  
+        if arquivo:           
+            try:            
                 with open(arquivo, 'w', encoding='utf-8') as f:
                     json.dump(self.resultados, f, ensure_ascii=False, indent=2)
                 messagebox.showinfo("Sucesso", f"Resultados exportados para:\n{arquivo}")
@@ -354,17 +351,12 @@ class ExtratorTextoApp:
         if not self.resultados:
             messagebox.showwarning("Aviso", "Nenhum resultado para exportar!")
             return
-            
-        arquivo = filedialog.asksaveasfilename(
-            defaultextension=".csv",
-            filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
-            title="Salvar como CSV"
-        )
-        
+                    
+        arquivo = os.path.join(self.pasta_selecionada.get(), "resultados_extracao.csv")      
         if arquivo:
             try:
                 with open(arquivo, 'w', encoding='utf-8', newline='') as f:
-                    writer = csv.DictWriter(f, fieldnames=["imagem", "nome_extraido", "tempo"])
+                    writer = csv.DictWriter(f, fieldnames=["imagem", "campos", "tempo"])
                     writer.writeheader()
                     writer.writerows(self.resultados)
                 messagebox.showinfo("Sucesso", f"Resultados exportados para:\n{arquivo}")
@@ -428,7 +420,8 @@ class ExtratorTextoApp:
         payload = {
             "model": "gpt-4o-mini",
             "messages": MENSAGEM,
-            "max_tokens": 200
+            "max_tokens": 200,
+            "temperature": 0.1
         }
         
         try:
@@ -445,7 +438,15 @@ class ExtratorTextoApp:
                 return f"ERRO_API: {data['error']['message']}"
                 
             resposta = data["choices"][0]["message"]["content"].strip()
-            return resposta
+          
+            inicio = resposta.find("{")
+            fim = resposta.rfind("}") + 1
+
+            # Certifica-se de que encontrou os delimitadores
+            if inicio and fim:
+                data = json.loads(resposta[inicio:fim])
+            
+            return data
             
         except Exception as e:
             return f"ERRO_API: {str(e)}"
@@ -485,17 +486,17 @@ class ExtratorTextoApp:
             self.root.update_idletasks()
             
             inicio = time.time()
-            nome_extraido = self.extrair_nome_gpt4(caminho, api_key, system_prompt=system_prompt, user_prompt=user_prompt)
+            campos = self.extrair_nome_gpt4(caminho, api_key, system_prompt=system_prompt, user_prompt=user_prompt)
             tempo = time.time() - inicio
             
             self.resultados.append({
                 "imagem": img_nome,
-                "nome_extraido": nome_extraido,
+                "campos": campos,
                 "tempo": round(tempo, 2)
             })
             
-            status = "✅" if "ERRO" not in nome_extraido else "❌"
-            self.log(f"   {status} Resultado: {nome_extraido[:100]}...")
+            status = "✅" if "ERRO" not in campos else "❌"
+            self.log(f"   {status} Resultado: {campos}...")
             self.log(f"   ⏱️ Tempo: {tempo:.2f}s\n")
             
             # Atualizar progresso
@@ -509,7 +510,7 @@ class ExtratorTextoApp:
         self.log("📊 RESUMO FINAL")
         self.log("=" * 50)
         
-        sucesso = sum(1 for r in self.resultados if "ERRO" not in r["nome_extraido"])
+        sucesso = sum(1 for r in self.resultados if "ERRO" not in r["campos"])
         self.log(f"✅ Sucesso: {sucesso}/{total}")
         self.log(f"❌ Erros: {total - sucesso}/{total}")
         
